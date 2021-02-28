@@ -17,6 +17,7 @@ class Solution
         var answer = "";
         List<char> validChars = new List<char> { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
         var totalAnswers = new List<string>();
+        var guessList = new List<GuessObject>();
         for (int i = 0; i < N; i++)
         {
             string[] inputs = Console.ReadLine().Split(' ');
@@ -26,53 +27,72 @@ class Solution
             int cows = int.Parse(inputs[2]);
             //answer = guess;
             Console.Error.WriteLine("Guess: " + guess + " bulls: " + bulls + "  cows: " + cows);
-            if (bulls == 4)
+            var guessObj = new GuessObject(guess, bulls, cows);
+            guessList.Add(guessObj);
+            Helper.GetPossibilities(guessObj, ref validChars, ref totalAnswers);
+
+            Console.Error.WriteLine("answers: " + string.Join(";", totalAnswers));
+            totalAnswers = totalAnswers.Distinct().ToList();
+            if (totalAnswers.Count == 1)
             {
-                answer = guess;
+                answer = totalAnswers[0];
+                break;
             }
-            else
-            {
-                List<string> answers = GetPossibilities(guess, bulls, cows, ref validChars);
-                var finalAnswers = new List<string>();
-
-
-                Console.Error.WriteLine("answers: " + string.Join(";", answers));
-                foreach (var a in answers)
-                {
-                    if (!totalAnswers.Any() || totalAnswers.Contains(a))
-                    {
-                        finalAnswers.Add(a);
-                    }
-                }
-                totalAnswers = finalAnswers;
-
-
-                Console.Error.WriteLine("answers: " + string.Join(";", totalAnswers));
-
-                if (totalAnswers.Count == 1)
-                {
-                    answer = totalAnswers[0];
-                    break;
-                }
-            }
-
         }
 
+        if(string.IsNullOrEmpty(answer)&& totalAnswers.Any())
+        {
+            foreach(var ta in totalAnswers)
+            {
+                if(!Helper.IsValid(ta,guessList,ref validChars))
+                {
+                    totalAnswers.Remove(ta);
+                }
+               
+            }
 
-
-
-
-
+            if (totalAnswers.Count == 1)
+            {
+                answer = totalAnswers[0];             
+            }
+        }
         // Write an answer using Console.WriteLine()
         // To debug: Console.Error.WriteLine("Debug messages...");
 
         Console.WriteLine(answer);
     }
+}
 
-    private static List<string> GetPossibilities(string guess, int bulls, int cows, ref List<char> validChars)
+public class GuessObject
+{
+    public string Guess { get; }
+    public int Bulls { get; }
+    public int Cows { get; }
+
+    public GuessObject(string guess, int bulls, int cows)
     {
+        Guess = guess;
+        Bulls = bulls;
+        Cows = cows;
+    }
+}
+
+public static class Helper
+{
+
+    public static void GetPossibilities(GuessObject guessObj, ref List<char> validChars, ref List<string> totalAnswers)
+    {
+         var bulls = guessObj.Bulls;
+         var cows = guessObj.Cows;
+         var guess = guessObj.Guess;
         var results = new List<string>();
         var guessValues = new List<char>();
+        if (bulls == 4)
+        {
+            totalAnswers = new List<string>() { guess };
+            return;
+        }
+
         foreach (var g in guess)
         {
             guessValues.Add(g);
@@ -86,181 +106,243 @@ class Solution
             {
                 validChars.Remove(gv);
             }
-            return printCombination(validChars, n, n);
-        }
-
-        
-        if (n == guessCharMandatories)
-        {
-            var guessCombinaisonresults = guessValues.CombineWithRepetitions(n);
-            return guessCombinaisonresults;
-        }
-        var guessCombinaisons = printCombination(guessValues, n, guessCharMandatories);
-
-        foreach (var gc in guessCombinaisons)
-        {
-            foreach (var vc in validChars)
+            var valid = validChars;
+            foreach (var ta in totalAnswers.ToList())
             {
-                var inputChars = gc.ToList();
-                inputChars.Add(vc);
-                results.AddRange(GetCombinations(inputChars));
-            }
-
-        }
-
-        return results;
-    }
-
-    private static List<string> GetCombinations(IEnumerable<char> items)
-    {
-        var combinations = new List<string> { string.Empty };
-
-        foreach (var item in items)
-        {
-            var newCombinations = new List<string>();
-
-            foreach (var combination in combinations)
-            {
-                for (var i = 0; i <= combination.Length; i++)
+                if (ta.Any(c => !valid.Contains(c)))
                 {
-                    newCombinations.Add(
-                      combination.Substring(0, i) +
-                      item +
-                      combination.Substring(i));
+                    totalAnswers.Remove(ta);
                 }
             }
-
-            combinations.AddRange(newCombinations);
+            return;
         }
-
-        return combinations;
-    }
-
-    private static List<string> printCombination(List<char> guessValues, int n, int guessCharMandatories)
-    {
-        // A temporary array to store  
-        // all combination one by one 
-        var data = new List<string>();
-
-        foreach (var c in guessValues.CombinationsWithoutRepetition(ofLength: n, guessCharMandatories))
+        var c = guess.ToCharArray();
+        if (n == guessCharMandatories)
         {
-            string value = string.Join(string.Empty, c);
-            //Console.WriteLine(value);
-            data.Add(value);
-        }
+            var results2 = new List<string>();
 
-        //foreach (var gv in guessValues)
-        //{
-        //    var tmpl = guessValues.Where( tgv => tgv!= gv).ToList();
-
-        //    var combi = string.Join(string.Empty,tmpl);
-        //    data.Add(combi);
-
-        //}
-
-        // Print all combination  
-        // using temprary array 'data[]' 
-        return combinationUtil(guessValues, data, 0, n - 1, 0, guessCharMandatories);
-    }
-
-
-    /* arr[] ---> Input Array 
- data[] ---> Temporary array to 
-             store current combination 
- start & end ---> Staring and Ending  
-                  indexes in arr[] 
- index ---> Current index in data[] 
- r ---> Size of a combination 
-         to be printed */
-    static List<string> combinationUtil(List<char> arr, List<string> data,
-                                int start, int end,
-                                int index, int r)
-    {
-        // Current combination is  
-        // ready to be printed,  
-        // print it 
-        if (index == r)
-        {
-            //for (int j = 0; j < r; j++)
-            //{
-
-            //    Console.Write(data[j] + " ");
-            //}
-
-            //Console.WriteLine("");
-            return data;
-        }
-
-        // replace index with all 
-        // possible elements. The  
-        // condition "end-i+1 >=  
-        // r-index" makes sure that  
-        // including one element 
-        // at index will make a  
-        // combination with remaining  
-        // elements at remaining positions 
-        for (int i = start; i <= end &&
-                  end - i + 1 >= r - index; i++)
-        {
-            Console.Error.WriteLine("arr[i] " + arr[i]);
-            //Console.Error.WriteLine("data[index] " + data[index]);
-            //data[index] += arr[i];
-            data.AddRange(combinationUtil(arr, data, i + 1,
-                             end, index + 1, r));
-        }
-        return data;
-    }
-
-
-}
-
-static class LinqExtensions
-{
-    public static IEnumerable<IEnumerable<T>> CombinationsWithoutRepetition<T>(
-        this IEnumerable<T> items,
-        int ofLength)
-    {
-        return (ofLength == 1) ?
-            items.Select(item => new[] { item }) :
-            items.SelectMany((item, i) => items.Skip(i + 1)
-                                               .CombinationsWithoutRepetition(ofLength - 1)
-                                               .Select(result => new T[] { item }.Concat(result)));
-    }
-
-    public static IEnumerable<IEnumerable<T>> CombinationsWithoutRepetition<T>(
-        this IEnumerable<T> items,
-        int ofLength,
-        int upToLength)
-    {
-        return Enumerable.Range(ofLength, Math.Max(0, upToLength - ofLength + 1))
-                         .SelectMany(len => items.CombinationsWithoutRepetition(ofLength: len));
-    }
-
-
-    public static List<string> CombineWithRepetitions(this IEnumerable<char> input, int take)
-    {
-        var output = new List<string>();
-        IList<char> item = new char[take];
-
-        CombineWithRepetitions(output, input, item, 0);
-
-        return output;
-    }
-
-    private static void CombineWithRepetitions(List<string> output, IEnumerable<char> input, IList<char> item, int count)
-    {
-        if (count < item.Count)
-        {
-            var enumerable = input as IList<char> ?? input.ToList();
-            foreach (var symbol in enumerable)
+            foreach (var v in c.Permutations())
             {
-                item[count] = symbol;
-                CombineWithRepetitions(output, enumerable, item, count + 1);
+                string item = string.Join(string.Empty, v);
+                if (item != guess && item.IsValid(guess, bulls, cows, validChars))
+                {
+                    results2.Add(item);
+                }
+
             }
+
+            if (totalAnswers.Any())
+            {
+                List<string> lists = totalAnswers.Intersect(results2).ToList();
+                Console.Error.WriteLine("lists  " + lists.Count);
+                totalAnswers = lists;
+            }
+            else
+            {
+                totalAnswers = results2;
+            }
+
+            return;
         }
+
+        var results3 = new List<string>();
+
+        if (bulls > 0)
+        {
+
+            if (totalAnswers.Any())
+            {
+                foreach (var ta in totalAnswers.ToList())
+                {
+                    if (ta == guess || !ta.IsValid(guess, bulls, cows, validChars))
+                    {
+                        totalAnswers.Remove(ta);
+                    }
+                }
+            }
+            else
+            {
+                var positions = new List<int>();
+                for (var i = 0; i < n; i++)
+                {
+                    positions.Add(i);
+                }
+                var bullsCombination = positions.Combinations(bulls);
+                var tmpAnswers = new List<string>();
+                foreach (var bc in bullsCombination)
+                {
+                    var resultCombi = new List<string>();
+                    var tmpanswer = string.Empty;
+                    for (var i = 0; i < n; i++)
+                    {
+                        var tmpresultCombi = new List<string>();
+                        if (bc.Contains(i))
+                        {          
+                            if(resultCombi.Any())
+                            {
+                                foreach (var rc in resultCombi)
+                                {
+                                    tmpresultCombi.Add(rc + guess[i]);
+                                }
+                            }
+                            else
+                            {
+                                tmpresultCombi.Add(guess[i].ToString());
+                            }
+                                                       
+                        }
+                        else
+                        {
+                            if (resultCombi.Any())
+                            {
+                                foreach (var vc in validChars)
+                            {
+                                foreach (var rc in resultCombi)
+                                {                                                          
+                                    tmpresultCombi.Add(rc + vc);
+                                }
+                            }
+                            }
+                            else
+                            {
+                                foreach (var vc in validChars)
+                                {
+                                    tmpresultCombi.Add(vc.ToString());
+                                }
+                            }
+                        }
+                        resultCombi = tmpresultCombi;
+                    }
+                    results3.AddRange(resultCombi);
+                }
+                totalAnswers = results3;
+            }
+            
+        }
+        return;
+    }
+
+    public static bool IsValid(this string item, string guess, int bulls, int cows, List<char> validChars)
+    {
+        if (item.Any(c => !validChars.Contains(c)))
+        {
+            return false;
+        }
+
+        var moveCounter = 0;
+        var stayPos = 0;
+        for (var i = 0; i < guess.Length; i++)
+        {
+            if (item[i] == guess[i])
+            {
+                stayPos++;
+            }
+            else
+            {
+                moveCounter++;
+            }
+
+            if (stayPos > bulls)
+                return false;
+        }
+
+
+
+        if (stayPos != bulls)
+            return false;
+
+
+        return true;
+    }
+
+    public static IEnumerable<T[]> Permutations<T>(this T[] values, int fromInd = 0)
+    {
+        if (fromInd + 1 == values.Length)
+            yield return values;
         else
         {
-            output.Add(string.Join(string.Empty,item));
+            foreach (var v in Permutations(values, fromInd + 1))
+                yield return v;
+
+            for (var i = fromInd + 1; i < values.Length; i++)
+            {
+                SwapValues(values, fromInd, i);
+                foreach (var v in Permutations(values, fromInd + 1))
+                    yield return v;
+                SwapValues(values, fromInd, i);
+            }
         }
+    }
+
+    private static void SwapValues<T>(T[] values, int pos1, int pos2)
+    {
+        if (pos1 != pos2)
+        {
+            T tmp = values[pos1];
+            values[pos1] = values[pos2];
+            values[pos2] = tmp;
+        }
+    }
+
+
+    public static IEnumerable<IEnumerable<T>> Combinations<T>(this IEnumerable<T> elements, int k)
+    {
+        return k == 0 ? new[] { new T[0] } :
+          elements.SelectMany((e, i) =>
+            elements.Skip(i + 1).Combinations(k - 1).Select(c => (new[] { e }).Concat(c)));
+    }
+
+    public static bool IsValid(string item, List<GuessObject> guessList, ref List<char> validChars)
+    {
+        var chars = validChars;
+        var bullsChars = new List<char>();
+        foreach (var gl in  guessList)
+        {
+            
+            if (gl.Cows == 0 && gl.Bulls > 0)
+            {
+                var isValid = true;
+                var moveCounter = 0;
+                var stayPos = 0;
+                for (var i = 0;i<gl.Guess.Length;i++)
+                {
+                    if (item[i] == gl.Guess[i])
+                    {
+                        bullsChars.Add(item[i]);
+                        stayPos++;
+                    }
+                    else if (gl.Guess.Contains(item[i]) && item.Count(it => it == item[i]) == 1)
+                    {
+                        isValid = false;                       
+                    }
+                    else
+                    {
+                        chars.Remove(gl.Guess[i]);                      
+                    }
+                }
+
+                foreach (var bc in bullsChars)
+                {
+                    if (!chars.Contains(bc))
+                        chars.Add(bc);
+                }
+                validChars = chars;
+                if (item.Any(c => !chars.Contains(c)))
+                {
+                    return false;
+                }
+
+                if (!isValid || stayPos != gl.Bulls)
+                {
+                    return false;
+                }                        
+            }                     
+        }
+
+        if (item.Any(c => !chars.Contains(c)))
+        {
+            return false;
+        }
+        return true;
     }
 }
